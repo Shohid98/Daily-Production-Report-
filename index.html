@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily Production Report</title>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f2f5f7;color:#222}.app{padding:10px;max-width:1600px;margin:auto}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;background:#fff;padding:10px;margin-bottom:10px;border:1px solid #ddd;border-radius:8px}
+button{border:0;border-radius:5px;padding:9px 12px;background:#1769aa;color:white;font-weight:bold;cursor:pointer}.green{background:#28844b}.gray{background:#53636d}.red{background:#b83232}
+.sheet{background:#fff;padding:10px;border:1px solid #ddd}.company{text-align:center;padding:10px;border:1px solid #777}
+.company input{width:100%;border:0;text-align:center;font-size:18px;font-weight:bold}
+.date{text-align:right;padding:10px 4px;font-weight:bold}.date input{font-weight:bold;border:0;font-size:14px}
+h2{text-align:center;margin:5px}.title{font-size:18px;text-align:center;border:0;font-weight:bold;text-decoration:underline;width:100%;color:#263f63}
+.wrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:1300px;font-size:12px;table-layout:auto}
+th,td{border:1px solid #333;padding:4px;text-align:center;vertical-align:middle;position:relative}
+th{background:#8fd04f;min-width:65px;white-space:normal;resize:horizontal;overflow:auto}
+th.bal{color:#a32626}th.ctn{background:#dcebd5}
+td input,td textarea{font:inherit;border:0;background:transparent;text-align:center;width:100%;min-width:45px;padding:5px 1px}
+td textarea{text-align:left;resize:both;min-height:30px}
+td input:focus,td textarea:focus{outline:2px solid #5aa6ed;background:#fffde8}
+td.bal{background:#fbe2d5}td.ctn{background:#e2f0d9}
+tbody tr{height:40px}tbody td{resize:vertical;overflow:auto}
+tfoot td{background:#c5e0b4;font-weight:bold}.totalbal{background:#ff1717!important}.rowactions{min-width:44px}
+.note{font-size:12px;color:#58636a;margin-top:8px}
+@page{size:A4 landscape;margin:7mm}
+@media print{body{background:white}.app{padding:0}.toolbar,.note,.no-print{display:none!important}.sheet{border:0;padding:0}.company{padding:4px}.company input{font-size:12px}.date{padding:4px}.title{font-size:13px}table{min-width:0;font-size:7px}th,td{padding:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}td input,td textarea{font-size:7px;padding:0;min-width:0}tbody tr{height:auto}}
+</style></head><body><div class="app">
+<div class="toolbar">
+<button class="green" onclick="addRow()">＋ নতুন Row</button><button class="green" onclick="addColumn()">＋ নতুন Column</button>
+<button onclick="saveData()">💾 সেভ করুন</button><button class="gray" onclick="loadData()">↻ সেভ করা ডেটা আনুন</button>
+<button class="gray" onclick="window.print()">🖨️ প্রিন্ট / PDF</button><button class="red" onclick="newSheet()">নতুন Blank Sheet</button>
+</div>
+<div class="sheet">
+<div class="company"><input id="companyName" value="Sajnia Sourcing BD Limited" aria-label="Company name"></div>
+<div class="date">DATE: <input id="reportDate" type="date"></div>
+<h2><input id="reportTitle" class="title" value="Daily Production Report" aria-label="Report title"></h2>
+<div class="wrap"><table id="report"><thead><tr id="head"></tr></thead><tbody id="rows"></tbody><tfoot><tr id="totals"></tr></tfoot></table></div>
+<div class="note">খালি শিট দিয়ে শুরু হবে। নতুন Row/Column যোগ করুন। Column-এর ডান প্রান্ত টেনে প্রস্থ বড়/ছোট করুন; Row-এর ঘর টেনে উচ্চতা বদলানো যায়। ডেটা এই ব্রাউজারেই সেভ হয়—নিয়মিত PDF ব্যাকআপ রাখুন।</div>
+</div></div>
+<script>
+const base=[
+ ['buyer','Buyer','text'],['sl','SL','auto'],['item','Name Of Item #','text'],['po','PO #','textarea'],['style','Style #','text'],
+ ['order','Order Qty in Pcs','number'],['cutting','Cutting','number'],['cutBal','Cutting Balance','calc'],
+ ['input','Input','number'],['inBal','Input Balance','calc'],['output','Output','number'],['outBal','Output Balance','calc'],
+ ['finishing','Finishing','number'],['remarks','REMARKS','textarea'],['req','Req Ctn','number'],['com','Com Ctn','number'],['balCtn','Bal Ctn','calc']
+];
+let rows=[],extra=[];
+const num=v=>{const n=parseFloat(v);return Number.isFinite(n)?n:0};
+const fmt=n=>(n<0?'-':'')+Math.abs(n).toLocaleString('en-US');
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function calc(f,r){if(f==='cutBal')return num(r.cutting)-num(r.order);if(f==='inBal')return num(r.input)-num(r.order);if(f==='outBal')return num(r.output)-num(r.order);return num(r.com)-num(r.req)}
+function render(){
+ const h=document.getElementById('head');
+ h.innerHTML=base.map(([k,label])=>`<th class="${['cutBal','inBal','outBal'].includes(k)?'bal':k==='req'||k==='com'||k==='balCtn'?'ctn':''}">${label}</th>`).join('')+
+ extra.map((c,i)=>`<th>${esc(c.label)} <button class="red no-print" style="padding:2px 5px" onclick="removeColumn(${i})">×</button></th>`).join('')+
+ '<th class="no-print rowactions">Action</th>';
+ document.getElementById('rows').innerHTML=rows.map((r,i)=>'<tr>'+base.map(([k,label,type])=>{
+ if(type==='auto')return `<td>${i+1}</td>`;
+ if(type==='calc')return `<td class="${['cutBal','inBal','outBal'].includes(k)?'bal':'ctn'}">${fmt(calc(k,r))}</td>`;
+ const tag=type==='textarea'?'textarea':'input';
+ return `<td><${tag} ${tag==='input'?`type="${type}" value="${esc(r[k]||'')}"`:''} data-i="${i}" data-k="${k}">${tag==='textarea'?esc(r[k]||''):''}</${tag}></td>`;
+ }).join('')+extra.map(c=>`<td><input data-i="${i}" data-k="${c.key}" value="${esc(r[c.key]||'')}"></td>`).join('')+
+ `<td class="no-print rowactions"><button class="red" style="padding:4px 7px" onclick="removeRow(${i})">×</button></td></tr>`).join('');
+ document.querySelectorAll('#rows [data-i]').forEach(el=>el.addEventListener('input',()=>{rows[+el.dataset.i][el.dataset.k]=el.value;renderTotalsOnly()}));
+ renderTotalsOnly();
+}
+function renderTotalsOnly(){
+ let s={};base.forEach(([k])=>s[k]=0);
+ rows.forEach(r=>{['order','cutting','input','output','finishing','req','com'].forEach(k=>s[k]+=num(r[k]));['cutBal','inBal','outBal','balCtn'].forEach(k=>s[k]+=calc(k,r))});
+ document.getElementById('totals').innerHTML='<td colspan="5">TOTAL</td>'+
+ `<td>${fmt(s.order)} pcs</td><td>${fmt(s.cutting)}</td><td class="totalbal">${fmt(s.cutBal)} pcs</td><td>${fmt(s.input)}</td><td class="totalbal">${fmt(s.inBal)} pcs</td><td>${fmt(s.output)}</td><td class="totalbal">${fmt(s.outBal)} pcs</td><td>${fmt(s.finishing)}</td><td></td><td>${fmt(s.req)} Ctn</td><td>${fmt(s.com)} Ctn</td><td>${fmt(s.balCtn)} Ctn</td>`+
+ extra.map(()=>'<td></td>').join('')+'<td class="no-print"></td>';
+}
+function blankRow(){let r={};base.forEach(([k,t])=>{if(t!=='auto'&&t!=='calc')r[k]=''});extra.forEach(c=>r[c.key]='');return r}
+function addRow(){rows.push(blankRow());render();document.querySelector('#rows tr:last-child input')?.focus()}
+function removeRow(i){if(confirm('এই Row মুছে ফেলবেন?')){rows.splice(i,1);render()}}
+function addColumn(){let label=prompt('নতুন Column-এর নাম লিখুন:');if(!label||!label.trim())return;extra.push({key:'x'+Date.now(),label:label.trim()});rows.forEach(r=>r[extra[extra.length-1].key]='');render()}
+function removeColumn(i){if(confirm('এই Column মুছে ফেলবেন?')){let c=extra.splice(i,1)[0];rows.forEach(r=>delete r[c.key]);render()}}
+function saveData(){let state={rows,extra,companyName:document.getElementById('companyName').value,reportDate:document.getElementById('reportDate').value,reportTitle:document.getElementById('reportTitle').value};try{localStorage.setItem('dailyProductionReportBlank_v1',JSON.stringify(state));alert('ডেটা এই ব্রাউজারে সেভ হয়েছে।')}catch(e){alert('সেভ করা যায়নি।')}}
+function loadData(){try{let s=JSON.parse(localStorage.getItem('dailyProductionReportBlank_v1')||'null');if(!s){alert('সেভ করা ডেটা পাওয়া যায়নি।');return}rows=s.rows||[];extra=s.extra||[];['companyName','reportDate','reportTitle'].forEach(k=>{if(s[k]!==undefined)document.getElementById(k).value=s[k]});render();alert('ডেটা লোড হয়েছে।')}catch(e){alert('ডেটা লোড করা যায়নি।')}}
+function newSheet(){if(confirm('নতুন খালি শিট তৈরি করবেন? প্রয়োজন হলে আগে সেভ করুন।')){rows=[];extra=[];render()}}
+document.getElementById('reportDate').value=new Date().toISOString().slice(0,10);
+render();
+</script></body></html>
