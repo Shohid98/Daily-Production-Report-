@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Production Report</title>
+<style>
+:root{--green:#8fd04f;--lightgreen:#e2f0d9;--peach:#fbe2d5;--dark:#263238;--line:#333}
+*{box-sizing:border-box}
+body{font-family:Arial,"Noto Sans Bengali",sans-serif;margin:0;background:#f2f5f7;color:#222}
+.app{max-width:1500px;margin:auto;padding:14px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;background:#fff;padding:12px;border:1px solid #d6dce0;border-radius:8px}
+button{border:0;border-radius:6px;padding:10px 13px;font-weight:700;cursor:pointer;background:#1769aa;color:white}
+button.secondary{background:#4f606b}button.green{background:#28844b}button.danger{background:#b83232}
+button:active{transform:translateY(1px)}
+.hint{font-size:13px;color:#53616a;margin-left:auto}
+.sheet{background:white;padding:12px;border:1px solid #ccd2d7;box-shadow:0 2px 8px #0000000d}
+.company{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;border:1px solid #777;padding:8px;font-size:11px;min-height:64px}
+.company input{width:100%;border:0;border-bottom:1px dotted #aaa;font-size:11px;padding:3px}
+.brand{text-align:center;font-size:20px;font-weight:900;color:#111}
+.brand small{display:block;font-size:10px}
+.logo-right{text-align:right;font-weight:bold;color:#3c6787}
+.datebar{text-align:right;padding:12px 6px;font-weight:bold}
+.datebar input{border:0;font-weight:bold;font-size:14px}
+h2{text-align:center;font-size:18px;margin:8px 0 10px;text-decoration:underline;color:#263f63}
+.title-input{width:min(100%,600px);text-align:center;border:0;font-size:18px;font-weight:bold;text-decoration:underline;color:#263f63}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1120px;font-size:12px}
+th,td{border:1px solid var(--line);padding:5px 4px;text-align:center;vertical-align:middle}
+th{background:var(--green);font-weight:700;line-height:1.2}
+th.balance{color:#a32626}th.carton{background:#dcebd5}
+td input,td textarea{width:100%;border:0;background:transparent;font:inherit;text-align:center;padding:4px 1px;min-width:40px;color:#222}
+td textarea{resize:vertical;min-height:34px;text-align:left}
+td input:focus,td textarea:focus{outline:2px solid #5aa6ed;background:#fffde8}
+td.balance{background:var(--peach)}
+td.carton{background:var(--lightgreen)}
+td.item{min-width:175px}td.po{min-width:90px}td.remarks{min-width:100px}
+td.num input{min-width:58px}
+tfoot td{background:#c5e0b4;font-weight:bold}
+tfoot td.balance-total{background:#ff1717;color:#111}
+tfoot td.carton-total{background:#c5e0b4;color:#b22}
+.negative{color:#b3261e;font-weight:bold}
+.row-actions{min-width:40px}
+.small{font-size:11px;color:#59666e;margin-top:10px}
+@media(max-width:650px){.app{padding:6px}.sheet{padding:5px}.company{grid-template-columns:1fr auto;font-size:10px}.logo-right{display:none}.brand{font-size:16px}.toolbar button{flex:1}.hint{width:100%;margin:0}}
+@page{size:A4 landscape;margin:8mm}
+@media print{
+ body{background:white}.app{max-width:none;padding:0}.toolbar,.small,.row-actions,.no-print{display:none!important}
+ .sheet{border:0;box-shadow:none;padding:0}.company{min-height:48px;padding:4px}
+ table{min-width:0;width:100%;font-size:8px;table-layout:auto}
+ th,td{padding:3px 2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ td input,td textarea{font-size:8px;padding:0;min-width:0}
+ td textarea{min-height:16px}
+ h2,.title-input{font-size:13px}
+ .datebar{padding:5px}
+ tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="app">
+ <div class="toolbar">
+  <button class="green" onclick="addRow()">＋ নতুন স্টাইল যোগ করুন</button>
+  <button onclick="saveData()">💾 সেভ করুন</button>
+  <button class="secondary" onclick="loadData()">↻ সেভ করা ডেটা আনুন</button>
+  <button class="secondary" onclick="window.print()">🖨️ প্রিন্ট / PDF</button>
+  <button class="danger" onclick="clearData()">নতুন রিপোর্ট</button>
+  <span class="hint">অফলাইন ফাইল · ডেটা এই ব্রাউজারেই সেভ হবে</span>
+ </div>
+ <div class="sheet">
+  <div class="company" style="display:block;text-align:center;min-height:0;padding:12px;font-size:18px;font-weight:bold">
+   <input id="companyName" value="Sajnia Sourcing BD Limited" style="text-align:center;font-size:18px;font-weight:bold;width:100%;border:0">
+  </div>
+  <div class="datebar">DATE: <input id="reportDate" type="date"></div>
+  <h2><input class="title-input" id="reportTitle" value="Daily Production Report"></h2>
+  <div class="table-wrap">
+   <table id="report">
+    <thead><tr>
+     <th>Buyer</th><th>SL</th><th>Name Of Item #</th><th>PO #</th><th>Style #</th><th>Order Qty in Pcs</th>
+     <th>Cutting</th><th class="balance">Cutting Balance</th><th>Input</th><th class="balance">Input Balance</th><th>Output</th><th class="balance">Output Balance</th><th>Finishing</th><th>REMARKS</th><th class="carton">Req Ctn</th><th class="carton">Com Ctn</th><th class="carton">Bal Ctn</th><th class="row-actions no-print">Action</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+    <tfoot><tr id="totals"></tr></tfoot>
+   </table>
+  </div>
+  <div class="small">ব্যবহার: ঘরগুলোতে ট্যাপ করে তথ্য লিখুন। Cutting/Input/Output balance ও মোট হিসাব স্বয়ংক্রিয়। “সেভ করুন” চাপলে এই ডিভাইসের ব্রাউজারে সংরক্ষিত হবে। নিয়মিত ব্যাকআপের জন্য প্রিন্ট থেকে PDF সংরক্ষণ করুন।</div>
+ </div>
+</div>
+<script>
+const fields=[
+ ['buyer','text'],['sl','text'],['item','text'],['po','textarea'],['style','text'],
+ ['order','number'],['cutting','number'],['cutBal','calc'],['input','number'],['inBal','calc'],
+ ['output','number'],['outBal','calc'],['finishing','number'],['remarks','textarea'],
+ ['req','number'],['com','number'],['balCtn','calc']
+];
+const sample=[
+ {buyer:'',item:'Boys LS Cotton Crew Shirt',po:'MCRE00607\\nMCRE00608\\nMCRE00609\\nMCRE00610',style:'B1489',order:5760,req:64},
+ {buyer:'',item:'Boys LS Cotton Crew Shirt w Pocket',po:'MCRE00611\\nMCRE00612\\nMCRE00613\\nMCRE00614',style:'B1490',order:4608,req:64},
+ {buyer:'',item:'Ladies Cotton Crew Neck LS',po:'MCRE00615\\nMCRE00616\\nMCRE00617\\nMCRE00618',style:'L1198',order:4800,cutting:3338,input:1400,output:500,req:60},
+ {buyer:'',item:'Ladies LS Cotton V Neck Shirt',po:'MCRE00619\\nMCRE00620\\nMCRE00621\\nMCRE00622',style:'L1335',order:4800,cutting:2127,input:2100,output:1000,req:60},
+ {buyer:'',item:'Ladies Plus Cotton Crew Neck LS',po:'MCRE00623\\nMCRE00624\\nMCRE00625',style:'L1198X',order:1440,req:36},
+ {buyer:'',item:'Ladies Plus LS Cotton V Neck Shirt',po:'MCRE00626\\nMCRE00627\\nMCRE00628\\nMCRE00629',style:'L1335X',order:1440,req:36},
+ {buyer:'',item:'Mens LS Cotton Crew Shirt',po:'MCRE00630\\nMCRE00631\\nMCRE00632\\nMCRE00633',style:'M1500',order:5760,req:72},
+ {buyer:'',item:'Mens LS Cotton Henley Hoodie',po:'MCRE00634\\nMCRE00635\\nMCRE00636\\nMCRE00637',style:'M1519',order:4320,req:72},
+ {buyer:'',item:'Mens Long Sleeve Cotton Pocket Tee',po:'MCRE00638\\nMCRE00639\\nMCRE00640\\nMCRE00641',style:'M1021',order:4320,req:72}
+];
+let data=[];
+function num(v){let n=parseFloat(v);return Number.isFinite(n)?n:0}
+function fmt(n){return (n<0?'-':'')+Math.abs(n).toLocaleString('en-US')}
+function cell(field,val,i){
+ let cls=['cutBal','inBal','outBal'].includes(field)?'balance':field==='balCtn'?'carton':'';
+ if(field==='sl') val=i+1;
+ if(['cutBal','inBal','outBal','balCtn'].includes(field)){
+  return `<td class="${cls}" data-field="${field}">${fmt(calc(field,data[i]))}</td>`;
+ }
+ let tag=field==='po'||field==='remarks'?'textarea':'input';
+ let type=field==='number'?'number':(['order','cutting','input','output','finishing','req','com'].includes(field)?'number':'text');
+ let value=val??'';
+ return `<td class="${field} ${['order','cutting','input','output','finishing','req','com'].includes(field)?'num':''}"><${tag} ${tag==='input'?`type="${type}" value="${escapeHtml(value)}"`:''} data-i="${i}" data-field="${field}" ${field==='sl'?'readonly':''}>${tag==='textarea'?escapeHtml(value):''}</${tag}>`;
+}
+function escapeHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function calc(f,r){if(f==='cutBal')return num(r.cutting)-num(r.order);if(f==='inBal')return num(r.input)-num(r.order);if(f==='outBal')return num(r.output)-num(r.order);return num(r.com)-num(r.req)}
+function render(){
+ const tbody=document.getElementById('rows');
+ tbody.innerHTML=data.map((r,i)=>`<tr>${fields.map(([f])=>cell(f,r[f],i)).join('')}<td class="row-actions no-print"><button class="danger" style="padding:5px 7px" onclick="removeRow(${i})">×</button></td></tr>`).join('');
+ tbody.querySelectorAll('[data-i]').forEach(el=>{
+  const update=()=>{let i=+el.dataset.i,f=el.dataset.field;data[i][f]=el.value;updateTotals();updateBalances(i)};
+  el.addEventListener('input',update);
+ });
+ updateTotals();
+}
+function updateBalances(i){
+ let tr=document.querySelectorAll('#rows tr')[i];if(!tr)return;
+ ['cutBal','inBal','outBal','balCtn'].forEach(f=>{let td=tr.querySelector(`[data-field="${f}"]`);if(td)td.textContent=fmt(calc(f,data[i]))});
+}
+function updateTotals(){
+ let sums={order:0,cutting:0,cutBal:0,input:0,inBal:0,output:0,outBal:0,finishing:0,req:0,com:0,balCtn:0};
+ data.forEach(r=>{['order','cutting','input','output','finishing','req','com'].forEach(f=>sums[f]+=num(r[f]));sums.cutBal+=calc('cutBal',r);sums.inBal+=calc('inBal',r);sums.outBal+=calc('outBal',r);sums.balCtn+=calc('balCtn',r)});
+ document.getElementById('totals').innerHTML=`<td colspan="5">TOTAL</td><td>${fmt(sums.order)} pcs</td><td>${fmt(sums.cutting)}</td><td class="balance-total">${fmt(sums.cutBal)} pcs</td><td>${fmt(sums.input)}</td><td class="balance-total">${fmt(sums.inBal)} pcs</td><td>${fmt(sums.output)}</td><td class="balance-total">${fmt(sums.outBal)} pcs</td><td>${fmt(sums.finishing)}</td><td></td><td>${fmt(sums.req)} Ctn</td><td>${fmt(sums.com)} Ctn</td><td class="carton-total">${fmt(sums.balCtn)} Ctn</td><td class="no-print"></td>`;
+}
+function addRow(){data.push({buyer:'',item:'',po:'',style:'',order:0,cutting:0,input:0,output:0,finishing:0,remarks:'',req:0,com:0});render();document.querySelector('#rows tr:last-child input[data-field="buyer"]')?.focus()}
+function removeRow(i){if(confirm('এই স্টাইলের সারি মুছে ফেলবেন?')){data.splice(i,1);render()}}
+function saveData(){
+ const state={data,companyName:document.getElementById('companyName').value,reportDate:document.getElementById('reportDate').value,reportTitle:document.getElementById('reportTitle').value};
+ try{localStorage.setItem('dailyProductionReport_v1',JSON.stringify(state));alert('ডেটা এই ব্রাউজারে সেভ হয়েছে।')}catch(e){alert('সেভ করা যায়নি। ব্রাউজারের storage অনুমতি পরীক্ষা করুন।')}
+}
+function loadData(){
+ try{let s=JSON.parse(localStorage.getItem('dailyProductionReport_v1')||'null');if(!s){alert('কোনো সেভ করা ডেটা পাওয়া যায়নি।');return}data=s.data||[];['companyName','reportDate','reportTitle'].forEach(k=>{if(s[k]!==undefined)document.getElementById(k).value=s[k]});render();alert('সেভ করা ডেটা লোড হয়েছে।')}catch(e){alert('ডেটা লোড করা যায়নি।')}
+}
+function clearData(){if(confirm('নতুন খালি রিপোর্ট তৈরি করবেন? বর্তমান ডেটা আগে সেভ করে নিন।')){data=[];addRow();}}
+document.getElementById('reportDate').value=new Date().toISOString().slice(0,10);
+data=sample.map(r=>({...r,cutting:r.cutting||0,input:r.input||0,output:r.output||0,finishing:0,com:0,remarks:''}));
+render();
+</script>
+</body>
+</html>
